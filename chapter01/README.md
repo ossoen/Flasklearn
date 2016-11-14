@@ -10,7 +10,6 @@ Flask 的安装很简单，可以全局安装，也可以使用虚拟环境安�
 $ sudo pip install flask
 ```
 
-
 ## 使用 virtualenvwrapper
 
 - 第 1 步，先安装 virtualenvwrapper，`$ [sudo] pip install virtualenvwrapper`
@@ -24,7 +23,6 @@ $ sudo pip install flask
 ```
 (env1) $ pip install flask
 ```
-
 
 ## 一个最简单的例子：Hello World
 
@@ -55,4 +53,5 @@ $ python hello.py
 在浏览器输入链接 `http://localhost:5000/`，可以看到 Hello World! 
 
 ![helloworld](../_images/helloworld.png)
+
 

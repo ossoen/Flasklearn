@@ -1,172 +1,213 @@
-# 数据库
+# 蓝图
 
-## ORM 框架
+在前面，我们都是把代码写在单一的文件里面，虽然看起来很方便，但也只是供学习的时候用用而已，真正在一个实际项目中，是不应该这样做的，为什么呢？
 
-Web 开发中，一个重要的组成部分便是数据库了。Web 程序中最常用的莫过于关系型数据库了，也称 SQL 数据库。另外，文档数据库（如 mongodb）、键值对数据库（如 redis）近几年也逐渐在 web 开发中流行起来，我们习惯把这两种数据库称为 NoSQL 数据库。
-
-本书中，我们使用的数据库仍是常见的 SQL 数据库。大多数的关系型数据库引擎（比如 MySQL、Postgres 和 SQLite）都有对应的 Python 包。在这里，我们不直接使用这些数据库引擎提供的 Python 包，而是使用对象关系映射（Object-Relational Mapper, ORM）框架，它将低层的数据库操作指令抽象成高层的面向对象操作。也就是说，如果我们直接使用数据库引擎，我们就要写 SQL 操作语句，但是，如果我们使用了 ORM 框架，我们对诸如表、文档此类的数据库实体就可以简化成对 Python 对象的操作。
-
-Python 中最广泛使用的 ORM 框架是 [SQLAlchemy](http://www.sqlalchemy.org/)，它是一个很强大的关系型数据库框架，不仅支持高层的 ORM，也支持使用低层的 SQL 操作，另外，它也支持多种数据库引擎，如 MySQL、Postgres 和 SQLite 等。
-
-## Flask-SQLAlchemy
-
-在 Flask 中，为了简化配置和操作，我们使用的 ORM 框架是 [Flask-SQLAlchemy](http://flask-sqlalchemy.pocoo.org/)，这个 Flask 扩展封装了 [SQLAlchemy](http://www.sqlalchemy.org/) 框架。在 Flask-SQLAlchemy 中，数据库使用 URL 指定，下表列出了常见的数据库引擎和对应的 URL。
-
-| 数据库引擎 | URL |
-| :-- | :-- |
-| MySQL | mysql://username:password@hostname/database |
-| Postgres | postgresql://username:password@hostname/database |
-| SQLite (Unix) | sqlite:////absolute/path/to/database |
-| SQLite (Windows) | sqlite:///c:/absolute/path/to/database |
-
-上面的表格中，username 和 password 表示登录数据库的用户名和密码，hostname 表示 SQL 服务所在的主机，可以是本地主机（localhost）也可以是远程服务器，database 表示要使用的数据库。有一点需要注意的是，SQLite 数据库不需要使用服务器，它使用硬盘上的文件名作为 database。
-
-## 一个最小的应用
-
-### 创建数据库
-
-首先，我们使用 pip 安装 Flask-SQLAlchemy:
-
-```
-$ pip install flask-sqlalchemy
-```
-
-接下来，我们配置一个简单的 SQLite 数据库：
+我们还是从 `hello world` 开始讲起，新建一个脚本文件，比如 `hello.py`。
 
 ```python
-$ cat app.py
+$ cat hello.py
+
 # -*- coding: utf-8 -*-
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/users.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
-db = SQLAlchemy(app)
 
+@app.route("/")
+def index():
+    return "Hello World!"
 
-class User(db.Model):
-    """定义数据模型"""
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True)
-    email = db.Column(db.String(120), unique=True)
-
-    def __init__(self, username, email):
-        self.username = username
-        self.email = email
-
-    def __repr__(self):
-        return '<User %r>' % self.username
+if __name__ == "__main__":
+    app.run(host='127.0.0.1', port=5200, debug=True)
 ```
 
-这里有几点需要注意的是：
+运行该脚本，在浏览器输入链接 `http://localhost:5200/`，可以看到 `Hello World!` 的字样。
 
-1. app 应用配置项 "SQLALCHEMY_DATABASE_URI" 指定了 SQLAlchemy 所要操作的数据库，这里我们使用的是 SQLite，数据库 URL 以 "sqlite:///" 开头，后面的 "db/users.db" 表示数据库文件存放在当前目录的 "db" 子目录中的 "users.db" 文件。当然，你也可以使用绝对路径，如 "/tmp/users.db" 等。
-2. db 对象是 SQLAlchemy 类的实例，表示程序使用的数据库。
-3. 我们定义的 "User" 模型必须继承自 "db.Model"，**这里的模型其实就对应着数据库中的表**。其中，类变量`__tablename__ ` 定义了在数据库中使用的表名，如果该变量没有被定义，Flask-SQLAlchemy 会使用一个默认名字。
+OK，现在我们需要添加一个『读书』频道，允许查看并添加书籍。这不很简单吗，将上面的代码修改一下，如下：
 
-接着，我们创建表和数据库。为此，我们先在当前目录创建 "db" 子目录和新建一个 "users.db" 文件，然后在交互式 Python shell 中导入 db 对象并调用 SQLAlchemy 类的 create_all() 方法：
+```py
+$ cat hello.py
+
+# -*- coding: utf-8 -*-
+
+from flask import Flask, request, redirect, url_for
+
+app = Flask(__name__)
+app.secret_key = 'some secret key'
+
+books = ['the first book', 'the second book', 'the third book']
+
+@app.route("/")
+def index():
+    render_string = '<ul>'
+
+    for book in books:
+        render_string += '<li>' + book + '</li>'
+
+    render_string += '</ul>'
+
+    return render_string
+
+@app.route("/book", methods=['POST', 'GET'])
+def book():
+    _form = request.form
+
+    if request.method == 'POST':
+        title = _form["title"]
+        books.append(title)
+        return redirect(url_for('index'))
+
+    return '''
+        <form name="book" action="/book" method="post">
+            <input id="title" name="title" type="text" placeholder="add book">
+            <button type="submit">Submit</button>
+        </form>
+        '''
+
+if __name__ == "__main__":
+    app.run(host='127.0.0.1', port=5200, debug=True)
+```
+
+OK，上面的脚本实现了最基本的查看并添加书籍的功能。
+ 
+接着，我们还想添加『电影』、『音乐』、『美食』和『旅游』等频道，我们是继续往这个文件添加功能吗？当然不是，是时候把这些功能进行拆分了，将我们的应用模块化，把一个大应用分解成若干个小应用。你可能会想：把这些功能分别写到多个文件，比如 `movie.py`，`music.py` 等等，可是这样的话，我们的应用是跑不起来的。为什么呢？因为 `app` 对象只有一个。
+
+那怎么办呢？
+
+事实上，Flask 提供了 Blueprint (蓝图) 的功能，让我们可以实现模块化的应用。使用它主要有以下好处：
+
+- 将一个复杂的大型应用分解成若干蓝图的集合，也就是若干个子应用或者说模块，每个蓝图都包含了可以作为独立模块的视图、模板和静态文件等；
+
+- 制作通用的组件，使开发者更易复用组件；
+
+不过目前 Flask 蓝图的注册是静态的，不支持可插拔。
+
+现在，让我们将上面的代码进行改写，加入蓝图的功能。
+
+首先，我们对程序的结构做一些调整，如下：
 
 ```
-$ mkdir db && cd db && touch users.db
-$ python
->>> from app import db
->>> db.create_all()
+├── app.py            -- 启动程序
+├── book              -- book 模块
+│   ├── __init__.py
+│   └── book.py
+├── movie             -- movie 模块
+│   ├── __init__.py
+│   └── movie.py
+└── templates         -- 模板
+    ├── 404.html
+    ├── book.html
+    ├── layout.html
+    └── movie.html
 ```
 
-我们验证一下，"users" 表是否创建成功：
-
-```
-$ sqlite3 db/users.db    # 打开数据库文件
-SQLite version 3.8.10.2 2015-05-20 18:17:19
-Enter ".help" for usage hints.
-
-sqlite> .schema users   # 查看 "user" 表的 schema
-CREATE TABLE users (
-        id INTEGER NOT NULL,
-        username VARCHAR(80),
-        email VARCHAR(120),
-        PRIMARY KEY (id),
-        UNIQUE (username),
-        UNIQUE (email)
-);
-```
-
-### 插入数据
-
-现在，我们创建一些用户：
+其中，movie 模块跟 book 模块是独立的，它们有各自的业务逻辑，互不影响。我们这里只分析 book 模块，book.py 的代码如下：
 
 ```python
->>> from app import db
->>> from app import User
->>>
->>> admin = User('admin', 'admin@example.com')
->>> guest = User('guest', 'guest@example.com')
->>> 
->>> db.session.add(admin)
->>> db.session.add(guest)
->>> db.session.commit()
+# -*- coding: utf-8 -*-
+
+from flask import Blueprint, url_for, render_template, request, flash, redirect
+
+# 创建一个蓝图对象
+book_bp = Blueprint(
+    'book', 
+    __name__,
+    template_folder='../templates',
+)
+
+books = ['The Name of the Rose', 'The Historian', 'Rebecca']
+
+@book_bp.route('/', methods=['GET'])
+def index():
+    return '<h1>Hello World!</h1>'
+
+@book_bp.route('/book', methods=['GET', 'POST'])
+def handle_book():
+    _form = request.form
+
+    if request.method == 'POST':
+        title = _form["title"]
+        books.append(title)
+        flash("add book successfully!")
+        return redirect(url_for('book.handle_book'))
+
+    return render_template(
+        'book.html',
+        books=books
+   )
+
+@book_bp.route('/book/<name>')
+def get_book_info(name):
+    book = [name]
+    if name not in books:
+        book = []
+
+    return render_template(
+        'book.html',
+        books=book
+    )
 ```
 
-这里有一点要注意的是，我们在将数据添加到会话后，在最后要记得调用 "db.session.commit()" 提交事务，这样，数据才会被写入到数据库。
+注意到，我们使用了下面的代码创建一个蓝图对象：
 
-### 查询数据
+```
+book_bp = Blueprint('book', __name__, template_folder='../templates')
+```
 
-查询数据主要是用 "query" 接口，例如 `all()` 方法返回所有数据，`filter_by()` 方法对查询结果进行过滤，参数是键值对，更多方法可以查看[这里](http://flask-sqlalchemy.pocoo.org/2.1/api/)。
+Blueprint 要求至少传入两个参数，第一个参数是蓝图的名称，第二个参数是蓝图所在的包或模块，其他参数是可选的，比如`template_folder`，`url_prefix`和`static_folder`等。
+
+在蓝图中使用路由是这样的：
+
+```
+# book_bp 就是我们创建的蓝图对象
+@book_bp.route('/book/<name>')
+```
+
+创建好了蓝图之后，我们还需要注册它，否则不能使用。我们在`app.py`中注册：
 
 ```python
->>> from app import User
->>> users = User.query.all()
->>> users
-[<User u'admin'>, <User u'guest'>]
->>>
->>> admin = User.query.filter_by(username='admin').first()
->>> admin
-<User u'admin'>
->>> admin.email
-u'admin@example.com'
+# -*- coding: utf-8 -*-
+
+from flask import Flask, render_template
+from book import book_bp
+from movie import movie_bp
+
+app = Flask(__name__)
+app.secret_key = 'The quick brown fox jumps over the lazy dog'
+
+# 注册蓝图
+app.register_blueprint(book_bp)
+app.register_blueprint(movie_bp)
+
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('404.html'), 404
+
+
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=5200, debug=True)
 ```
 
-如果我们想查看 SQLAlchemy 为查询生成的原生 SQL 语句，只需要把 query 对象转化成字符串：
+本文完整的代码在[这里](https://github.com/ethan-funny/flask-demos/tree/v0.3)。
 
-```
->>> str(User.query.filter_by(username='guest'))
-'SELECT users.id AS users_id, users.username AS users_username, users.email AS users_email \nFROM users \nWHERE users.username = :username_1'
-```
+在命令行中输入`$ python app.py`，我们就可以访问该应用了，如下：
 
-### 更新数据
+![Imgur](http://i.imgur.com/AvItISQ.png)
 
-更新数据也用 "add()" 方法，如果存在要更新的对象，SQLAlchemy 就更新该对象而不是添加。
+![Imgur](http://i.imgur.com/Wvnn7sS.png)
 
-```python
->>> from app import db
->>> from app import User
->>>
->>> admin = User.query.filter_by(username='admin').first()
->>>
->>> admin.email = 'admin@hotmail.com'
->>> db.session.add(admin)
->>> db.session.commit()
->>>
->>> admin = User.query.filter_by(username='admin').first()
->>> admin.email
-u'admin@hotmail.com'
-```
+## 总结
 
-### 删除数据
+- 使用蓝图对我们的应用进行模块化
+- 通过添加蓝图扩展我们的应用
+- 蓝图定义完之后，还需要在应用中注册
+- 可以给蓝图中的所有路由定义一个 URL 前缀 (url_prefix)
 
-删除数据用 "delete()" 方法，同样要记得 "delete" 数据后，要调用 "commit()" 提交事务：
+# 更多阅读
 
-```python
->>> from app import db
->>> from app import User
->>>
->>> admin = User.query.filter_by(username='admin').first()
->>> db.session.delete(admin)
->>> db.session.commit()
-```
-
+- [用蓝图实现模块化的应用](http://docs.jinkan.org/docs/flask/blueprints.html)
+- [蓝图 | Flask之旅](https://spacewander.github.io/explore-flask-zh/7-blueprints.html)
+- [Flask进阶系列(六)–蓝图 – 思诚之道](http://www.bjhee.com/flask-ad6.html)
+- [如何理解 Flask 中的蓝图？ - 知乎专栏](https://zhuanlan.zhihu.com/p/21743996)
 
 

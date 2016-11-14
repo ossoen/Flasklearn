@@ -1,129 +1,86 @@
-# 部署
+# 工厂方法
 
-我们这里以项目 [flask-todo-app](https://github.com/ethan-funny/flask-todo-app) 为例，介绍如何将其部署到生产环境，主要有以下几个步骤：
+在前面，我们都是直接通过`app=Flask(__name__)`来创建一个`app`实例的。这样做没什么问题，但如果我们想为每个实例分配不同的配置，比如有测试环境的配置，开发环境的配置和生产环境的配置等，这时就比较麻烦了。
 
-- 创建项目的运行环境
-- 使用 Gunicorn 启动 flask 程序
-- 使用 supervisor 管理服务器进程
-- 使用 Nginx 做反向代理
+有什么办法呢？
 
-## 创建项目的运行环境
+其实我们可以通过调用一个函数来返回一个应用实例，比如下面的方法：
 
-- 创建 Python 虚拟环境，以便隔离不同的项目
-- 安装项目依赖包
+```python
+def create_app(config_filename):
+    app = Flask(__name__)
+    app.config.from_pyfile(config_filename)
 
-```
-$ pip install virtualenvwrapper
-$ source /usr/local/bin/virtualenvwrapper.sh
-$ mkvirtualenv flask-todo-env   # 创建完后，会自动进入到该虚拟环境，以后可以使用 workon 命令
-$ 
-(flask-todo-env)$ git clone https://github.com/ethan-funny/flask-todo-app
-(flask-todo-env)$ cd flask-todo-app
-(flask-todo-env)$ pip install -r requirements.txt
+    from yourapplication.views.admin import admin
+    from yourapplication.views.user import user
+    app.register_blueprint(admin)
+    app.register_blueprint(user)
+
+    return app
 ```
 
-## 使用 Gunicorn 启动 flask 程序
+上面的`create_app`函数就是一个`工厂方法`，我们将创建应用程序实例的工作交给了它来完成，我们以后就可以通过传入不同的配置名，以此批量生产`app`。
 
-我们在本地调试的时候经常使用命令 `python manage.py runserver` 或者 `python app.py` 等启动 Flask 自带的服务器，但是，Flask 自带的服务器性能无法满足生产环境的要求，因此这里我们采用 [Gunicorn](http://gunicorn.org/) 做 wsgi (Web Server Gateway Interface，Web 服务器网关接口) 容器，假设我们以 root 用户身份进行部署：
+说到这，你也应该明白`工厂方法`的优势所在了：
 
-```
-(flask-todo-env)$ pip install gunicorn
-(flask-todo-env)$ /home/root/.virtualenvs/flask-todo-env/bin/gunicorn -w 4 -b 127.0.0.1:7345 application.app:create_app()
-```
+- 将创建应用实例的过程交给工厂函数，通过传入不同的配置，我们可以创建不同环境下的应用
+- 在做测试时，为每个实例分配分配不同的配置，从而测试每一种不同的情况
 
-上面的命令中，-w 参数指定了 worker 的数量，-b 参数绑定了地址（包含访问端口）。
+现在，我们对[上一篇](https://funhacks.gitbooks.io/head-first-flask/content/chapter02/section2.06.html)的例子进行重构，引入工厂函数。
 
-需要注意的是，由于我们这里将 Gunicorn 绑定在本机 127.0.0.1，因此它仅仅监听来自服务器自身的连接，也就是我们从外网访问该服务。在这种情况下，我们通常使用一个反向代理来作为外网和 Gunicorn 服务器的中介，而这也是推荐的做法，接下来也会介绍如何使用 nginx 做反向代理。不过，有时为了调试方便，我们可能需要从外网发送请求给 Gunicorn，这时我们可以让 Gunicorn 绑定 0.0.0.0，这样它就会监听来自外网的所有请求。
+核心代码在下面，完成代码请参考[这里](https://github.com/ethan-funny/flask-demos/tree/v0.5)。
 
-## 使用 supervisor 管理服务器进程
+现在，`app.py`代码如下：
 
-在上面，我们手动使用命令启动了 flask 程序，当程序挂掉的时候，我们又要再启动一次。另外，当我们想关闭程序的时候，我们需要找到 pid 进程号并 kill 掉。这里，我们采用一种更好的方式来管理服务器进程，我们将 supervisor 安装全局环境下，而不是在当前的虚拟环境：
+```python
+# -*- coding: utf-8 -*-
 
-```
-$ pip install supervisor
-$ echo_supervisord_conf > supervisor.conf   # 生成 supervisor 默认配置文件
-$ vi supervisor.conf    # 修改 supervisor 配置文件，添加 gunicorn 进程管理
-```
+from flask import Flask, render_template
+from configs import config
+from book import book_bp
+from movie import movie_bp
 
-在 `supervisor.conf` 添加以下内容：
+def create_app(config_name):
+    app = Flask(__name__)
 
-```
-[program:flask-todo-env]
-directory=/home/root/flask-todo-app
-command=/home/root/.virtualenvs/%(program_name)s/bin/gunicorn
-  -w 4
-  -b 127.0.0.1:7345
-  --max-requests 2000
-  --log-level debug
-  --error-logfile=-
-  --name %(program_name)s
-  "application.app:create_app()"
+    # basic config
+    app.config.from_object(config[config_name])
 
-environment=PATH="/home/root/.virtualenvs/%(program_name)s/bin"
-numprocs=1
-user=deploy
-autostart=true
-autorestart=true
-redirect_stderr=true
-redirect_stdout=true
-stdout_logfile=/home/root/%(program_name)s-out.log
-stdout_logfile_maxbytes=100MB
-stdout_logfile_backups=10
-stderr_logfile=/home/root/%(program_name)s-err.log
-stderr_logfile_maxbytes=100MB
-stderr_logfile_backups=10
+    # blueprints
+    app.register_blueprint(book_bp)
+    app.register_blueprint(movie_bp)
+
+    # error handler
+    handle_errors(app)
+
+    return app
+
+def handle_errors(app):
+    @app.errorhandler(404)
+    def page_not_found(error):
+        return render_template('404.html'), 404
 ```
 
-supervisor 的常用命令如下：
+我们还需要一个启动程序，比如`run.py`，如下：
 
-```
-supervisord -c supervisor.conf                             通过配置文件启动 supervisor
-supervisorctl -c supervisor.conf status                    查看 supervisor 的状态
-supervisorctl -c supervisor.conf reload                    重新载入 配置文件
-supervisorctl -c supervisor.conf start [all]|[appname]     启动指定/所有 supervisor 管理的程序进程
-supervisorctl -c supervisor.conf stop [all]|[appname]      关闭指定/所有 supervisor 管理的程序进程
-supervisorctl -c supervisor.conf restart [all]|[appname]   重启指定/所有 supervisor 管理的程序进程
-```
+```python
+# -*- coding: utf-8 -*-
 
-## 使用 Nginx 做反向代理
+from app import create_app
 
-将 Nginx 作为反向代理可以处理公共的 HTTP 请求，发送给 Gunicorn 并将响应带回给发送请求的客户端。在 ubuntu 上可以使用 `sudo apt-get install nginx` 安装 nginx，其他系统也类似。
-
-要想配置 Nginx 作为运行在 127.0.0.1:7345 的 Gunicorn 的反向代理，我们可以在 /etc/nginx/sites-enabled 下给应用创建一个文件，不妨称之为 flask-todo-app.com，nginx 的类似配置如下：
-
-```
-# Handle requests to exploreflask.com on port 80
-server {
-    listen 80;
-    server_name flask-todo-app.com;
-
-    # Handle all locations
-    location / {
-        # Pass the request to Gunicorn
-        proxy_pass http://127.0.0.1:7345;
-
-        # Set some HTTP headers so that our app knows where the request really came from
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
+if __name__ == '__main__':
+    app = create_app('default')
+    app.run(host='127.0.0.1', port=5200, debug=True)
 ```
 
-常用的 nginx 使用命令如下：
+打开终端，运行下面命令，就可以在浏览器访问我们的应用了。
 
 ```
-$ sudo service nginx start
-$ sudo service nginx stop
-$ sudo service nginx restart
+$ python run.py
 ```
 
-可以看到，我们上面的部署方式，都是手动部署的，如果有多台服务器要部署上面的程序，那就会是一个恶梦，有一个自动化部署的神器 [Fabric](http://www.fabfile.org/) 可以帮助我们解决这个问题，感兴趣的读者可以了解一下。
+# 更多阅读
 
-## 参考资料
-
-- [部署 | Flask之旅](https://spacewander.github.io/explore-flask-zh/14-deployment.html)
-- [python web 部署：nginx + gunicorn + supervisor + flask 部署笔记 - 简书](http://www.jianshu.com/p/be9dd421fb8d)
-- [新手教程：建立网站的全套流程与详细解释 | 谢益辉](http://yihui.name/cn/2009/06/how-to-build-a-website-as-a-dummy/)
-
+- [应用程序的工厂函数 — Flask 0.10.1 文档](http://docs.jinkan.org/docs/flask/patterns/appfactories.html)
+- [Flask进阶系列(七)–应用最佳实践 – 思诚之道](http://www.bjhee.com/flask-ad7.html)
 

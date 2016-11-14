@@ -1,18 +1,26 @@
-# 结束语
+# Flask 实战
 
-本书介绍了如何基于 [Flask](http://flask.pocoo.org/) 进行 Web 开发，涉及的内容也比较基础，相信读者看完本书后可以做一个简单的 Web 应用。本书的实战例子是一个 Web TODO 应用，由后台进行模板渲染返回给客户端，读者如果有兴趣的话，可以对其进行改编，比如将前端和后端分离，后端负责数据处理，前端负责渲染，如果你对 [React](https://facebook.github.io/react/) 感兴趣的话，可以考虑一下。
+完整的项目代码，请参考[这里](https://github.com/ethan-funny/flask-todo-app)。
 
-本书还有很多其他议题没有涉及到，比如**测试**，**性能**等等。另外，如果本书存在什么问题，请[与我联系](http://funhacks.net)，欢迎指正。
+本章主要介绍如何开发一个`Web TODO`应用，用于管理个人的任务清单，该项目改编自 [flask-simple-todo](https://bitbucket.org/wwq0327/flask-simple-todo)，由于原项目已经很久没更新了，我对其进行了修改和完善，修改后的代码在[这里](https://github.com/ethan-funny/flask-todo-app)。
 
+目前，该应用主要的功能有：
 
+- 添加待办事项
+- 修改待办事项
+- 删除事项
+- 完成事项
 
+界面如下：
 
+![flask-todo](http://i.imgur.com/aXIeP9K.png)
 
+# 开始实战
 
+我们会从下面三个方面对该项目进行介绍：
 
-
-
-
-
+1. [生成项目结构](section4.01.md)
+2. [设计数据模型](section4.02.md)
+3. [编写业务逻辑](section4.03.md)
 
 

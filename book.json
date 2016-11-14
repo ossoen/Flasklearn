@@ -12,7 +12,7 @@
             "weibo": null
         },
         "sidebar": {
-            "ethan-funny's Blog": "http://funhacks.net"
+            "ethan-funny's Blog": "https://funhacks.net"
         }
     },
     "output": null,
@@ -30,10 +30,13 @@
         "pageNumbers": false,
         "paperSize": "a4"
     },
-    "plugins": [""],
+    "plugins": ["disqus"],
     "pluginsConfig": {
         "theme-default": {
             "showLevel": false
+        },
+        "disqus": {
+            "shortName": "funhacks"
         }
     },
     "title": "Flask Web 开发入门",

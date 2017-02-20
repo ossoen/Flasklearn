@@ -4,6 +4,10 @@
 Flask Web 开发入门
 ===
 
+![Version](https://img.shields.io/badge/version-1.1-brightgreen.svg)
+[![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-brightgreen.svg)](https://raw.githubusercontent.com/ethan-funny/head-first-flask/master/LICENSE)
+[![Analytics](https://ga-beacon.appspot.com/UA-62960961-2/head-first-flask/readme)](https://github.com/igrigorik/ga-beacon)
+
 ## Flask 简介
 
 Python 中有许多 [Web 开发框架](https://wiki.python.org/moin/WebFrameworks)，比如 [Django][1]，[Flask][2]，[Tornado][3]，[Bottle][4] 和 [web.py][5] 等，其中，Django 可以说是一个全能型（all in one）的框架，自带管理后台；而 Flask 则是一个非常轻量级的框架，提供了搭建 Web 服务的必要组件，如果你不喜欢自带的组件，由于 Flask 良好的扩展性，你也可以使用其他开源的 Flask 扩展插件，甚至可以自己写一个，让喜欢折腾的开发者一展身手；Tornado 则主打异步处理，高并发，这也是它的一个显著特点。

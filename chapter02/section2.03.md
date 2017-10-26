@@ -51,7 +51,7 @@ static/
 
 favicon 是 favorites icon 的缩写，也被称为 website icon（网页图标）、page icon（页面图标）等。通常而言，定义一个 favicon 的方法是将一个名为『favicon.ico』的文件置于 Web 服务器的根目录下。但是，正如我们在上面指出，我们一般将图片等静态资源放在一个单独的 static 文件夹中。为了解决这种不一致，我们可以在站点模板的 <head> 部分添加两个 link 组件，比如我们可以在 template/base.html 中定义 favicon 图标：
 
-```html
+``` html
 {% block head %}
 {{ super() }}
 <link rel="shortcut icon" href="{{ url_for('static', filename = 'favicon.ico') }}" type="image/x-icon">
